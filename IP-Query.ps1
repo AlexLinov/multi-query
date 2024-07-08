@@ -1,8 +1,8 @@
 param (
-    [string]$filePath
+    [string]$outfile
 )
 
-if (-not $filePath) {
+if (-not $outfile) {
     Write-Host "Usage: .\script.ps1 -filePath <path_to_output_file>"
     exit
 }
@@ -14,41 +14,75 @@ function Get-ApiKey {
 
 function Query-VirusTotalApi {
     param (
-        [string]$ip
+        [string]$identifier,
+        [string]$type
     )
 
     $apiKey = Get-ApiKey
-    $apiUrl = "https://www.virustotal.com/api/v3/ip_addresses/$ip"
+    if ($type -eq "hash") {
+        $apiUrl = "https://www.virustotal.com/api/v3/files/$identifier"
+    } elseif ($type -eq "ip") {
+        $apiUrl = "https://www.virustotal.com/api/v3/ip_addresses/$identifier"
+    }
     $headers = @{
         "x-apikey" = $apiKey
     }
 
-    $response = Invoke-RestMethod -Uri $apiUrl -Method Get -Headers $headers
+    $response = Invoke-RestMethod -Uri $apiUrl -Method Get -Headers $headers -ErrorAction SilentlyContinue
     return $response
 }
 
 function Process-ApiResponse {
     param (
         [object]$response,
-        [string]$ip,
+        [string]$identifier,
         [int]$processId,
-        [string]$filePath
+        [string]$outfile,
+        [string]$type
     )
 
-    if ($response.data.attributes.last_analysis_stats.malicious -gt 0) {
-        $output = "Malicious IP detected: $ip, PID: $processId"
+    if ($response -eq $null) {
+        $output = "Error querying: $($identifier), PID: $($processId)"
+    } elseif ($response.data.attributes.last_analysis_stats.malicious -gt 0) {
+        $output = "Malicious $type detected: $($identifier), PID: $($processId)"
     } else {
-        $output = "IP is clean: $ip, PID: $processId"
+        $output = "$type is clean: $($identifier), PID: $($processId)"
     }
 
-    $output | Out-File -FilePath $filePath -Append
+    $output | Out-File -FilePath $outfile -Append
 }
 
-$activeConnections = Get-NetTCPConnection | Select-Object -Property RemoteAddress, OwningProcess -Unique
+function Get-ActiveProcessesHashes {
+    $processes = Get-WmiObject Win32_Process | Where-Object { $_.ExecutablePath -ne $null } | Select-Object Name, ExecutablePath, ProcessId
+    foreach ($process in $processes) {
+        $hash = (Get-FileHash -Algorithm SHA256 -Path $process.ExecutablePath).Hash
+        [PSCustomObject]@{
+            Name        = $process.Name
+            ExecutablePath = $process.ExecutablePath
+            ProcessId   = $process.ProcessId
+            Hash        = $hash
+        }
+    }
+}
+
+function Get-ActiveConnections {
+    Get-NetTCPConnection | Select-Object -Property RemoteAddress, OwningProcess -Unique
+}
+
+$processes = Get-ActiveProcessesHashes
+
+foreach ($process in $processes) {
+    $hash = $process.Hash
+    $processId = $process.ProcessId
+    $response = Query-VirusTotalApi -identifier $hash -type "hash"
+    $null = Process-ApiResponse -response $response -identifier $hash -processId $processId -filePath $outfile -type "File hash"
+}
+
+$activeConnections = Get-ActiveConnections
 
 foreach ($connection in $activeConnections) {
     $ip = $connection.RemoteAddress
     $processId = $connection.OwningProcess
-    $response = Query-VirusTotalApi -ip $ip
-    $null = Process-ApiResponse -response $response -ip $ip -processId $processId -filePath $filePath
+    $response = Query-VirusTotalApi -identifier $ip -type "ip"
+    $null = Process-ApiResponse -response $response -identifier $ip -processId $processId -filePath $outfile -type "IP address"
 }
