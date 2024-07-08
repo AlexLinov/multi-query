@@ -1,6 +1,6 @@
 # TCP Connections and Active Processes VirusTotal Query Script
 
-This PowerShell script is designed to be used with Microsoft Defender for Endpoint Live Response Sessions. It queries TCP connections on an endpoint against the VirusTotal API to identify possible malicious addresses, including C2 servers and other unwanted connections.
+This PowerShell script is designed to be used with Microsoft Defender for Endpoint Live Response Sessions. It queries TCP connections and process hash value on an endpoint against the VirusTotal API to identify possible malicious addresses, including C2 servers and other unwanted connections.
 
 ## Features
 
