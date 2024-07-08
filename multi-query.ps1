@@ -3,7 +3,7 @@ param (
 )
 
 if (-not $outfile) {
-    Write-Host "Usage: .\script.ps1 -filePath <path_to_output_file>"
+    Write-Host "Usage: .\script.ps1 -outfile <path_to_output_file>"
     exit
 }
 
