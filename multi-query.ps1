@@ -49,7 +49,7 @@ function Process-ApiResponse {
         $output = "$type is clean: $($identifier), PID: $($processId)"
     }
 
-    $output | Out-File -FilePath $outfile -Append
+    $output | Out-File -Filepath $outfile -Append
 }
 
 function Get-ActiveProcessesHashes {
@@ -75,7 +75,7 @@ foreach ($process in $processes) {
     $hash = $process.Hash
     $processId = $process.ProcessId
     $response = Query-VirusTotalApi -identifier $hash -type "hash"
-    $null = Process-ApiResponse -response $response -identifier $hash -processId $processId -filePath $outfile -type "File hash"
+    $null = Process-ApiResponse -response $response -identifier $hash -processId $processId -outfile $outfile -type "File hash"
 }
 
 $activeConnections = Get-ActiveConnections
@@ -84,5 +84,5 @@ foreach ($connection in $activeConnections) {
     $ip = $connection.RemoteAddress
     $processId = $connection.OwningProcess
     $response = Query-VirusTotalApi -identifier $ip -type "ip"
-    $null = Process-ApiResponse -response $response -identifier $ip -processId $processId -filePath $outfile -type "IP address"
+    $null = Process-ApiResponse -response $response -identifier $ip -processId $processId -outfile $outfile -type "IP address"
 }
