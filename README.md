@@ -6,6 +6,7 @@ This PowerShell script is designed to be used with Microsoft Defender for Endpoi
 
 - Retrieves active TCP connections on an endpoint.
 - Retrives active processes and its hash values.
+- Ability to use multiple API Keys.
 - Queries each connection's IP address and file hash value against the VirusTotal API.
 - Logs results, indicating whether each IP is clean or potentially malicious.
 - Includes the process ID (PID) associated with each connection.
